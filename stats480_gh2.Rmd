@@ -1,0 +1,121 @@
+---
+title: "stats480_gh2"
+output: pdf_document
+date: "2025-02-19"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+5.3
+```{r}
+library(tidyverse)
+data <- read.delim("cars93_tab.txt")
+head(data)
+set.seed(100)
+N <- nrow(data)
+n <- 50
+```
+
+a.Select a random sample of cars from this population. Estimate the average city miles per gallon (mpg) for these cars, with a bound on the error of estimation.
+
+Estimate of average city miles per gallon: 22.24
+Confidence interval: [21.13807, 23.34193]
+```{r}
+sample <- sample(N, n, replace = FALSE)
+sample_df <- data[sample, ]
+sample_df
+
+y <- sample_df$MPGCITY
+avg_mpg <- mean(y) #estimate of avg city miles
+s2 <- var(y)
+varybar <- (s2/n) * (1-(n/N))
+seybar <- sqrt(varybar)
+error_bound_mpg <- 2 * seybar
+conf_int <- avg_mpg + c(-1, 1) * error_bound_mpg
+avg_mpg
+conf_int
+```
+
+b. Estimate the proportion of these cars that have at least one air bag, with a bound on
+the error of estimation.
+
+Estimate of proportion of cars with at least one air bag: 0.6
+Confidence interval: [0.5054268, 0.6945732]
+```{r}
+have_airbag <- sample_df |> filter(AIRBAGS > 0)
+num_with <- nrow(have_airbag)
+airbag_prop <- num_with / n #proportion with airbags = num with airbags/sample size
+varphat <- ((airbag_prop * (1 - airbag_prop)) / (n-1)) * (1 - n/N)
+error_bound <- 2 * sqrt(varphat)
+conf_int <- airbag_prop + c(-1, 1) * error_bound
+airbag_prop
+conf_int
+```
+
+c. Using the data from part (a), poststratify on the car type and then estimate the aver-
+age city mpg by this method.
+
+Estimate of average after poststratification: 22.05314	
+```{r}
+Ni <- data |> 
+  group_by(TYPE) |> 
+  summarize(Ni = n())
+Ni
+sample_means <- sample_df |>
+  group_by(TYPE) |> 
+  summarise(
+    mean= mean(MPGCITY),
+    n_i = n()
+  )
+sample_means
+stratified_data <- sample_means |> #combine sample_means df with Ni one
+  left_join(Ni, by = "TYPE")
+stratified_data
+
+poststratified_avg_estimate <- stratified_data |>
+  summarise(
+    y_st = sum(Ni * mean) / N
+  ) |>
+  pull()
+poststratified_avg_estimate
+```
+
+d. Using the data from part (b), poststratify on car type and then estimate the proportion
+of cars that have at least one air bag by this method.
+
+Estimate of proportion with at least one air bag after poststratification: 0.646496
+```{r}
+sample_proportions <- sample_df |>
+  group_by(TYPE) |>
+  summarise(
+    with_airbag = sum(AIRBAGS > 0),
+    n_i = n(),
+    p_i = with_airbag / n_i #prop for each stratum
+  )
+
+stratified_data <- sample_proportions |>
+  left_join(Ni, by = "TYPE")
+
+poststratified_prop_estimate <- stratified_data|>
+  summarise(
+    p_st = sum(Ni * p_i) / N
+  ) |>
+  pull() #extract value from df
+poststratified_prop_estimate
+```
+
+e. Comparing the above results, comment on when poststratiﬁcation might produce big
+gains in terms of the error of estimation.
+For both average city mpg and proportion of cars with air bags, there isn't a big difference between the estimates before and after poststratification. Poststratification might produce larger gains if the strata were more different, especially for average city mpg and proportion with air bags.  
+
+
+
+
+
+
+
+
+
+
